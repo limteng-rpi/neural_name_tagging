@@ -2,6 +2,7 @@ import re
 import logging
 import torch
 import torch.nn as nn
+import numpy as np
 
 
 logger = logging.getLogger()
@@ -76,6 +77,46 @@ def build_form_mapping(vocab: dict,
                 form_mapping[k_zero] = k
 
     return form_mapping
+
+
+def build_signal_embed(embed_counter, train_counter, token_vocab, form_mapping,
+                       embed_scale_func=lambda x: np.tanh(.001 * x),
+                       train_scale_func=lambda x: np.tanh(.1 * x)):
+    """Building reliability signal embeddings.
+    :param embed_counter: Embedding token or pair frequency.
+    :param train_counter: Term frequency in the training set.
+    :param token_vocab: Token vocabulary.
+    :param form_mapping: Token form mapping (see build_form_mapping()).
+    :param embed_scale_func: A scaling function.
+    :param train_scale_func: A scaling function.
+    """
+    feat_size = 10
+    # process counts
+    embed_counter_scaled = {t: embed_scale_func(c)
+                          for t, c in embed_counter.items()}
+    train_counter_scaled = {t: train_scale_func(c)
+                          for t, c in train_counter.items()}
+
+    # build signal embeddings
+    signal_embed = [[0] * feat_size for _ in range(len(token_vocab))]
+    for token, token_idx in token_vocab.items():
+        mapped_token = form_mapping.get(token, token)
+        signal_embed[token_idx] = [
+            # numeric signals
+            embed_counter_scaled.get(mapped_token, 0),
+            train_counter_scaled.get(token, 0),
+            # binary signals
+            1 if embed_counter.get(mapped_token, 0) < 5 else 0,
+            1 if embed_counter.get(mapped_token, 0) < 10 else 0,
+            1 if embed_counter.get(mapped_token, 0) < 100 else 0,
+            1 if embed_counter.get(mapped_token, 0) < 1000 else 0,
+            1 if embed_counter.get(mapped_token, 0) < 10000 else 0,
+            1 if train_counter.get(token, 0) < 5 else 0,
+            1 if train_counter.get(token, 0) < 10 else 0,
+            1 if train_counter.get(token, 0) < 100 else 0,
+        ]
+    signal_embed = nn.Embedding.from_pretrained(torch.FloatTensor(signal_embed))
+    return signal_embed
 
 
 def load_embedding_from_file(path,
