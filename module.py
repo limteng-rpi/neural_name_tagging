@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.init as I
-# import torch.nn.utils.rnn as R
-# import torch.nn.functional as F
+import torch.nn.functional as F
 
 
 def log_sum_exp(tensor, dim=0, keepdim: bool = False):
@@ -77,6 +76,70 @@ class LSTM(nn.LSTM):
                 p.data[bias_size // 4:bias_size // 2].fill_(self.forget_bias)
 
 
+class CharCNN(nn.Module):
+    """Character-level CNNs that generate a character-level representation for
+    each word from its compositional characters.
+    """
+
+    def __init__(self, embedding_num, embedding_dim, filters, dropout=0,
+                 padding_idx=0):
+        super(CharCNN, self).__init__()
+
+        self.embedding_num = embedding_num
+        self.embedding_dim = embedding_dim
+        self.output_size = sum([x[1] for x in filters])
+        self.filters = filters
+
+        self.char_embed = nn.Embedding(
+            embedding_num, embedding_dim, padding_idx=padding_idx)
+        self.convs = nn.ModuleList([nn.Conv2d(1, x[1], (x[0], embedding_dim))
+                                    for x in filters])
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, inputs):
+        inputs_embed = self.char_embed.forward(inputs)
+        inputs_embed = inputs_embed.unsqueeze(1)
+
+        conv_outputs = [F.leaky_relu(conv.forward(inputs_embed)).squeeze(3)
+                        for conv in self.convs]
+        conv_outputs_max = [F.max_pool1d(i, i.size(2)).squeeze(2)
+                            for i in conv_outputs]
+        outputs = torch.cat(conv_outputs_max, 1)
+        outputs = self.dropout(outputs)
+        return outputs
+
+
+class CharCNNFF(nn.Module):
+    def __init__(self, embedding_num, embedding_dim, filters, dropout=0,
+                 padding_idx=0, output_size=None):
+        super(CharCNNFF, self).__init__()
+
+        self.embedding_num = embedding_num
+        self.embedding_dim = embedding_dim
+        self.conv_output_size = sum([x[1] for x in filters])
+        self.output_size = output_size if output_size else self.conv_output_size
+        self.filters = filters
+
+        self.char_embed = nn.Embedding(embedding_num, embedding_dim,
+                                       padding_idx=padding_idx)
+        self.convs = nn.ModuleList([nn.Conv2d(1, x[1], (x[0], embedding_dim))
+                                    for x in filters])
+        self.linear = nn.Linear(self.conv_output_size, self.output_size)
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, inputs):
+        inputs_embed = self.char_embed.forward(inputs)
+        inputs_embed = inputs_embed.unsqueeze(1)
+
+        conv_outputs = [F.leaky_relu(conv.forward(inputs_embed)).squeeze(3)
+                        for conv in self.convs]
+        conv_outputs_max = [F.max_pool1d(i, i.size(2)).squeeze(2)
+                            for i in conv_outputs]
+        outputs = torch.cat(conv_outputs_max, 1)
+        outputs = F.leaky_relu(self.linear(outputs))
+        return outputs
+
+
 class CRF(nn.Module):
     def __init__(self, label_vocab, tag_scheme='bioes'):
         super(CRF, self).__init__()
@@ -115,10 +178,11 @@ class CRF(nn.Module):
                         label_from_prefix in ['B', 'I']
                         and label_to_prefix in ['I', 'E']
                         and label_from_type == label_to_type
-                     ]
+                    ]
                 )
                 if not is_allowed:
-                    self.transition.data[label_to_idx, label_from_idx] = -10000.0
+                    self.transition.data[
+                        label_to_idx, label_from_idx] = -10000.0
 
     def pad_logits(self, logits):
         """Pad the linear layer output with <SOS> and <EOS> scores.
