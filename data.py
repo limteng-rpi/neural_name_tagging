@@ -1,3 +1,4 @@
+import os
 import re
 import logging
 
@@ -8,6 +9,68 @@ from torch.utils.data import Dataset
 from collections import Counter
 
 logger = logging.getLogger()
+
+
+def _bio_to_bioes(labels):
+    label_len = len(labels)
+    labels_bioes = []
+    for idx, label in enumerate(labels):
+        next_label = labels[idx + 1] if idx < label_len - 1 else 'O'
+        if label == 'O':
+            labels_bioes.append('O')
+        elif label.startswith('B-'):
+            if next_label.startswith('I-'):
+                labels_bioes.append(label)
+            else:
+                labels_bioes.append('S-' + label[2:])
+        else:
+            if next_label.startswith('I-'):
+                labels_bioes.append(label)
+            else:
+                labels_bioes.append('E-' + label[2:])
+    return labels_bioes
+
+class ConllParser(object):
+
+    def __init__(self,
+                 fields, separator='\t',
+                 skip_comment=False):
+        self.fields = fields
+        self.separator = separator
+        self.skip_comment = skip_comment
+
+    def parse(self, path, *args, **kwargs):
+        fields = kwargs.get('fields', self.fields)
+        field_num = len(fields)
+        separator = kwargs.get('separator', self.separator)
+        skip_comment = kwargs.get('skip_comment', self.skip_comment)
+
+        files = []
+        if type(path) is list:
+            files = path
+        elif os.path.isdir(path):
+            files = [f for f in os.listdir(path) if os.path.isfile((f))]
+        elif os.path.isfile(path):
+            files = [path]
+
+        for file in files:
+            with open(file, 'r', encoding='utf-8') as r:
+                inst = [[] for _ in range(field_num)]
+                for line in r:
+                    if skip_comment and line.startswith('#'):
+                        continue
+
+                    line = line.rstrip('\n')
+                    if line:
+                        segs = line.split(separator)
+                        for field_idx, field in enumerate(fields):
+                            inst[field_idx].append(segs[field])
+                    elif inst[0]:
+                        yield inst
+                        inst = [[] for _ in range(field_num)]
+                if inst[0]:
+                    yield inst
+
 
 
 class NameTaggingDataset(Dataset):
