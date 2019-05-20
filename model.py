@@ -17,20 +17,25 @@ class LstmCNN(nn.Module):
                  char_embed_dim, char_filters,
                  lstm_hidden_size,
                  lstm_dropout=0, feat_dropout=0,
+                 parameters=None
                  ):
-        # TODO: init function for saved model
         super(LstmCNN, self).__init__()
 
         self.vocabs = vocabs
         self.label_size = len(self.vocabs['label'])
         # Input features
-        self.word_embed = load_embedding_from_file(word_embed_file,
-                                                   word_embed_dim,
-                                                   vocabs['token'],
-                                                   vocabs['embed'],
-                                                   vocabs['form'],
-                                                   padding_idx=C.PAD_INDEX,
-                                                   trainable=True)
+        if parameters and parameters.get('restore', False):
+            self.word_embed = nn.Embedding(parameters['word_embed_num'],
+                                           parameters['word_embed_dim'],
+                                           padding_idx=C.PAD_INDEX)
+        else:
+            self.word_embed = load_embedding_from_file(word_embed_file,
+                                                       word_embed_dim,
+                                                       vocabs['token'],
+                                                       vocabs['embed'],
+                                                       vocabs['form'],
+                                                       padding_idx=C.PAD_INDEX,
+                                                       trainable=True)
         self.char_embed = CharCNN(len(vocabs['char']),
                                   char_embed_dim,
                                   char_filters)

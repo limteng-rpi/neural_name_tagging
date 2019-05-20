@@ -1,6 +1,7 @@
 import re
-import logging
+import json
 import torch
+import logging
 import torch.nn as nn
 import numpy as np
 
@@ -183,3 +184,12 @@ def load_embedding_from_file(path,
     )
     embed_mat.weight.requires_grad = trainable
     return embed_mat
+
+
+def load_vocab(path):
+    vocab = {}
+    with open(path, 'r', encoding='utf-8') as r:
+        for line in r:
+            token, idx = line.rstrip('\n').split('\t')
+            vocab[token] = int(idx)
+    return vocab
