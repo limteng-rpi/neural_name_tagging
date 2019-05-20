@@ -115,7 +115,14 @@ class NameTaggingDataset(Dataset):
             label_counter.update(labels)
         return token_counter, char_counter, label_counter
 
-    def numberize(self, vocabs, form_map):
+    @property
+    def token_counter(self):
+        token_counter = Counter()
+        for inst in self.data:
+            token_counter.update(inst[0])
+        return token_counter
+
+    def numberize(self, vocabs):
         """Numberize the data set.
         :param vocabs: A dictionary of vocabularies.
         :param form_map: A mapping table from tokens in the data set to tokens
@@ -126,6 +133,7 @@ class NameTaggingDataset(Dataset):
         token_vocab = vocabs['token']
         label_vocab = vocabs['label']
         char_vocab = vocabs['char']
+        form_map = vocabs['form']
 
         data = []
         for inst in self.data:
