@@ -119,9 +119,9 @@ class LstmCNN_DFC(nn.Module):
         self.char_embed = CharCNNFF(len(vocabs['char']),
                                     char_embed_dim,
                                     char_filters,
-                                    char_feat_dim)
+                                    output_size=char_feat_dim)
         self.signal_embed = build_signal_embed(counters['embed'],
-                                               counters['train'],
+                                               counters['token'],
                                                vocabs['token'],
                                                vocabs['form'])
         self.word_dim = self.word_embed.embedding_dim
@@ -276,6 +276,7 @@ class LstmCNN_DFC(nn.Module):
         self.eval()
 
         logits = self.forward_nn(token_ids, char_ids, lens)
+        logits = self.crf.pad_logits(logits)
         _scores, preds = self.crf.viterbi_decode(logits, lens)
         preds = preds.data.tolist()
 
