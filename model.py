@@ -14,7 +14,7 @@ class LstmCNN(nn.Module):
     def __init__(self,
                  vocabs,
                  word_embed_file, word_embed_dim,
-                 char_embed_dim, char_filters,
+                 char_embed_dim, char_filters, char_feat_dim,
                  lstm_hidden_size,
                  lstm_dropout=0, feat_dropout=0,
                  parameters=None
@@ -36,9 +36,10 @@ class LstmCNN(nn.Module):
                                                        vocabs['form'],
                                                        padding_idx=C.PAD_INDEX,
                                                        trainable=True)
-        self.char_embed = CharCNN(len(vocabs['char']),
-                                  char_embed_dim,
-                                  char_filters)
+        self.char_embed = CharCNNFF(len(vocabs['char']),
+                                    char_embed_dim,
+                                    char_filters,
+                                    output_size=char_feat_dim)
         self.word_dim = self.word_embed.embedding_dim
         self.char_dim = self.char_embed.output_size
         self.feat_dim = self.char_dim + self.word_dim
@@ -98,7 +99,7 @@ class LstmCNN_DFC(nn.Module):
                  word_embed_file, word_embed_dim,
                  char_embed_dim, char_filters, char_feat_dim,
                  lstm_hidden_size,
-                 lstm_dropout=0.5, feat_dropout=0.5, signal_dropout=0.5,
+                 lstm_dropout=0.5, feat_dropout=0.5, signal_dropout=0,
                  ctx_size=5
                  ):
         # TODO: init function for saved model
@@ -175,7 +176,7 @@ class LstmCNN_DFC(nn.Module):
     def _repr_gate(self, word, char, signal, idx):
         gate_w = self.word_gates[idx](word)
         gate_c = self.char_gates[idx](char)
-        gate_s = self.signal_gates[idx](signal)
+        gate_s = self.signal_gates[idx](self.signal_dropout(signal))
         gate = gate_w + gate_c + gate_s
         gate = gate.sigmoid()
         return gate
@@ -188,7 +189,7 @@ class LstmCNN_DFC(nn.Module):
         """
         gate_h = self.hs_gates[idx](hs)
         gate_c = self.cof_gates[idx](cof)
-        gate_s = self.crs_gates[idx](crs)
+        gate_s = self.crs_gates[idx](self.signal_dropout(crs))
         gate = gate_h + gate_c + gate_s
         gate = gate.sigmoid()
         return gate
