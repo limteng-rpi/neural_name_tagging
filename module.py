@@ -144,12 +144,12 @@ class CharCNNFF(nn.Module):
         inputs_embed = self.char_embed.forward(inputs)
         inputs_embed = inputs_embed.unsqueeze(1)
 
-        conv_outputs = [F.leaky_relu(conv.forward(inputs_embed)).squeeze(3)
+        conv_outputs = [F.tanh(conv.forward(inputs_embed)).squeeze(3)
                         for conv in self.convs]
         conv_outputs_max = [F.max_pool1d(i, i.size(2)).squeeze(2)
                             for i in conv_outputs]
         outputs = torch.cat(conv_outputs_max, 1)
-        outputs = F.leaky_relu(self.linear(outputs))
+        outputs = F.tanh(self.linear(outputs))
         return outputs
 
 
