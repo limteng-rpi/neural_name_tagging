@@ -17,7 +17,7 @@ TOKEN_PADS = [
     (EOS, EOS_INDEX),
 ]
 
-TOKEB_REPLACE = {
+TOKEN_REPLACE = {
     '-LRB-': '(',
     '-RRB-': ')',
     '-LSB-': '[',
@@ -29,3 +29,5 @@ TOKEB_REPLACE = {
     '/.': '.',
     '/?': '?'
 }
+
+TOKEN_PROCESSOR = lambda x: [TOKEN_REPLACE.get(i, i) for i in x]
