@@ -221,7 +221,7 @@ class NameTaggingDataset(Dataset):
             batch_token_ids = torch.LongTensor(batch_token_ids)
             batch_char_ids = torch.LongTensor(batch_char_ids)
             batch_label_ids = torch.LongTensor(batch_label_ids)
-            seq_lens = torch.cuda.LongTensor(seq_lens)
+            seq_lens = torch.LongTensor(seq_lens)
 
         return (batch_token_ids, batch_char_ids, batch_label_ids, seq_lens,
                 batch_tokens, batch_labels)
