@@ -83,7 +83,7 @@ dev_set = NameTaggingDataset(os.path.join(args.input, 'dev.tsv'),
 test_set = NameTaggingDataset(os.path.join(args.input, 'test.tsv'),
                               conll_parser, gpu=use_gpu)
 
-# embedding
+# embedding vocab
 if args.embed_vocab:
     embed_vocab = load_vocab(args.embed_vocab)
 else:
