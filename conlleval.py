@@ -187,11 +187,11 @@ def report(counts, out=None, logger=None):
     #               (c.found_guessed, c.correct_chunk))
 
     if c.token_counter > 0:
-        out.write('Acc: %6.3f%%; ' %
+        out.write('Acc: %6.2f%%; ' %
                   (100. * c.correct_tags / c.token_counter))
-        out.write('P: %6.3f%%; ' % (100. * overall.prec))
-        out.write('R: %6.3f%%; ' % (100. * overall.rec))
-        out.write('F: %6.3f\n' % (100. * overall.fscore))
+        out.write('P: %6.2f%%; ' % (100. * overall.prec))
+        out.write('R: %6.2f%%; ' % (100. * overall.rec))
+        out.write('F: %6.2f\n' % (100. * overall.fscore))
         # if logger:
         #     logger.info('Acc: %6.3f%%; ' %
         #               (100. * c.correct_tags / c.token_counter))
@@ -201,9 +201,9 @@ def report(counts, out=None, logger=None):
 
     for i, m in sorted(by_type.items()):
         out.write('%12s: ' % i)
-        out.write('P: %6.3f%%; ' % (100. * m.prec))
-        out.write('R: %6.3f%%; ' % (100. * m.rec))
-        out.write('F: %6.3f  %d\n' % (100. * m.fscore, c.t_found_guessed[i]))
+        out.write('P: %6.2f%%; ' % (100. * m.prec))
+        out.write('R: %6.2f%%; ' % (100. * m.rec))
+        out.write('F: %6.2f  %d\n' % (100. * m.fscore, c.t_found_guessed[i]))
         # if logger:
         #     logger.info('%12s: ' % i)
         #     logger.info('P: %6.3f%%; ' % (100. * m.prec))
