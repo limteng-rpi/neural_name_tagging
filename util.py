@@ -3,6 +3,7 @@ import os
 import json
 import torch
 import logging
+import conlleval
 import torch.nn as nn
 import numpy as np
 from collections import Counter
@@ -198,11 +199,11 @@ def load_vocab(path):
 
 def build_all_vocabs(files, output_dir):
     from data import ConllParser, NameTaggingDataset
-    parser = ConllParser([3, -1])
+    parser = ConllParser([3, -1], processor={0: C.TOKEN_PROCESSOR})
     token_counter, char_counter, label_counter = Counter(), Counter(), Counter()
     for file in files:
         dataset = NameTaggingDataset(file, parser)
-        tc, cc, lc = dataset.counters()
+        tc, cc, lc = dataset.counters
         token_counter.update(tc)
         char_counter.update(cc)
         label_counter.update(lc)
@@ -235,8 +236,26 @@ def build_all_vocabs(files, output_dir):
 def calculate_lr(lr, current_step, total_step, min_lr=0):
     return min_lr + (lr - min_lr) * (1 - current_step / total_step)
 
-def calculate_labeling_scores(results):
-    pass
+def calculate_labeling_scores(results, report=True):
+    outputs = []
+    for p_b, g_b, t_b, l_b in results:
+        for p_s, g_s, t_s, l_s in zip(p_b, g_b, t_b, l_b):
+            p_s = p_s[:l_s]
+            for p, g, t in zip(p_s, g_s, t_s):
+                outputs.append('{} {} {}'.format(t, g, p))
+            outputs.append('')
+    counts = conlleval.evaluate(outputs)
+    overall, by_type = conlleval.metrics(counts)
+    if report:
+        conlleval.report(counts)
+    return (overall.fscore * 100.0, overall.prec * 100.0, overall.rec * 100.0)
+
 
 def save_result_file(results, output_file):
-    pass
+    with open(output_file, 'w', encoding='utf-8') as w:
+        for p_b, g_b, t_b, l_b in results:
+            for p_s, g_s, t_s, l_s in zip(p_b, g_b, t_b, l_b):
+                p_s = p_s[:l_s]
+                for p, g, t in zip(p_s, g_s, t_s):
+                    w.write('{}\t{}\t{}\n'.format(t, g, p))
+                w.write('\n')
