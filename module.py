@@ -38,8 +38,8 @@ class Linear(nn.Linear):
 
 
 class Linears(nn.Module):
-    def __init__(self, sizes: list,
-                 activation: str = 'tanh',
+    def __init__(self, sizes,
+                 activation='tanh',
                  nonlinear_last=False):
         super(Linears, self).__init__()
 
@@ -57,6 +57,20 @@ class Linears(nn.Module):
         if self.nonlinear_last:
             inputs = self.activation(inputs)
         return inputs
+
+
+class Highway(nn.Module):
+    def __init__(self, size, activation='tanh'):
+        super().__init__()
+        self.size = size
+        self.activation = getattr(torch, activation)
+        self.linear = Linear(size, size)
+        self.gate = Linear(size, size)
+
+    def forward(self, x):
+        gate = self.gate(x).sigmoid()
+        return gate * self.activation(self.linear(x)) + (1 - gate) * x
+
 
 
 class LSTM(nn.LSTM):
@@ -110,7 +124,7 @@ class CharCNN(nn.Module):
 
 
 class CharCNNFF(nn.Module):
-    def __init__(self, embedding_num, embedding_dim, filters, dropout=0,
+    def __init__(self, embedding_num, embedding_dim, filters,
                  padding_idx=0, output_size=None):
         super(CharCNNFF, self).__init__()
 
@@ -125,7 +139,6 @@ class CharCNNFF(nn.Module):
         self.convs = nn.ModuleList([nn.Conv2d(1, x[1], (x[0], embedding_dim))
                                     for x in filters])
         self.linear = nn.Linear(self.conv_output_size, self.output_size)
-        self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, inputs):
         inputs_embed = self.char_embed.forward(inputs)
