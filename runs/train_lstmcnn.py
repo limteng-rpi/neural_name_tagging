@@ -17,6 +17,7 @@ from model import LstmCNN
 from util import counter_to_vocab, merge_vocabs, build_embedding_vocab, \
     build_form_mapping, build_signal_embed, load_vocab, \
     calculate_labeling_scores, save_result_file, calculate_lr
+import constant as C
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s-%(levelname)s: %(message)s')
@@ -36,10 +37,10 @@ parser.add_argument('--eval_step', type=int, default=-1)
 # model parameters
 parser.add_argument('-e', '--embed')
 parser.add_argument('--embed_vocab', default=None)
-parser.add_argument('--char_dim', type=int, default=25)
+parser.add_argument('--char_dim', type=int, default=50)
 parser.add_argument('--word_dim', type=int, default=100)
 parser.add_argument('--char_filters', default='[[2,25],[3,25],[4,25]]')
-parser.add_argument('--char_feat_dim', type=int, default=100)
+parser.add_argument('--char_feat_dim', type=int, default=50)
 parser.add_argument('--lstm_size', type=int, default=100)
 parser.add_argument('--lstm_dropout', type=float, default=.5)
 parser.add_argument('--feat_dropout', type=float, default=.5)
@@ -74,7 +75,7 @@ if use_gpu:
     torch.cuda.set_device(args.device)
 
 # data sets
-conll_parser = ConllParser([0, 1])
+conll_parser = ConllParser([3, -1], processor={0: C.TOKEN_PROCESSOR})
 train_set = NameTaggingDataset(os.path.join(args.input, 'train.tsv'),
                                conll_parser, gpu=use_gpu)
 dev_set = NameTaggingDataset(os.path.join(args.input, 'dev.tsv'),
@@ -112,10 +113,11 @@ total_step = batch_step * args.max_epoch
 eval_step = batch_step if args.eval_step == -1 else args.eval_step
 char_filters = json.loads(args.char_filters)
 model = LstmCNN(vocabs=vocabs,
-                word_embed_file=args.embed_file,
+                word_embed_file=args.embed,
                 word_embed_dim=args.word_dim,
                 char_embed_dim=args.char_dim,
-                char_filters=args.char_filters,
+                char_filters=char_filters,
+                char_feat_dim=args.char_feat_dim,
                 lstm_hidden_size=args.lstm_size,
                 lstm_dropout=args.lstm_dropout,
                 feat_dropout=args.feat_dropout)
@@ -168,9 +170,8 @@ for epoch in range(args.max_epoch):
                  tokens, labels) = batch_dev
                 preds = model.predict(token_ids, char_ids, seq_lens)
                 preds = [[label_itos[l] for l in ls] for ls in preds]
-                results.append((preds, labels, tokens, seq_lens))
+                results.append((preds, labels, tokens, seq_lens.tolist()))
             fscore, prec, rec = calculate_labeling_scores(results)
-            print()
             logger.info('Dev - P: {:.2f} R: {:.2f} F: {:.2f}'.format(
                 fscore, prec, rec))
             if fscore > best_scores['dev']['f']:
@@ -187,11 +188,10 @@ for epoch in range(args.max_epoch):
                  tokens, labels) = batch_test
                 preds = model.predict(token_ids, char_ids, seq_lens)
                 preds = [[label_itos[l] for l in ls] for ls in preds]
-                results.append((preds, labels, tokens, seq_lens))
+                results.append((preds, labels, tokens, seq_lens.tolist()))
             fscore, prec, rec = calculate_labeling_scores(results)
             logger.info('Test - P: {:.2f} R: {:.2f} F: {:.2f}'.format(
                 fscore, prec, rec))
-            print()
             if best_epoch:
                 best_scores['test'] = {'f': fscore, 'p': prec, 'r': rec}
                 save_result_file(results, test_result_file)
