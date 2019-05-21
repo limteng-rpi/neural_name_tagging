@@ -1,4 +1,7 @@
 import os
+os.environ['MKL_NUM_THREADS'] = 1
+os.environ['OMP_NUM_THREADS'] = 1
+
 import json
 import time
 import torch
@@ -14,6 +17,8 @@ from model import LstmCNN_DFC
 from data import ConllParser, NameTaggingDataset
 from util import build_embedding_vocab, build_form_mapping, load_vocab, \
     calculate_labeling_scores, save_result_file, calculate_lr
+
+torch.set_num_threads(20)
 
 logging.basicConfig(level=logging.INFO,
                     format='%(message)s')
@@ -147,6 +152,7 @@ global_step = 0
 for epoch in range(args.max_epoch):
     print('-' * 80)
     logger.info('Epoch: {}'.format(epoch))
+    start_time = time.time()
     epoch_loss = []
     for batch in DataLoader(train_set,
                             batch_size=args.batch_size,
@@ -206,6 +212,8 @@ for epoch in range(args.max_epoch):
                 p['lr'] = lr
 
     # progress.close()
+    logger.info('Epoch: {} Time: {} Loss: {:.4f}'.format(
+        epoch, int(time.time() - start_time), sum(epoch_loss) / len(epoch_loss)))
     logger.info('Best dev: P: {:.2f}, R: {:.2f}, F: {:.2f}'.format(
         best_scores['dev']['p'], best_scores['dev']['r'],
         best_scores['dev']['f']))
