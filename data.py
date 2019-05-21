@@ -30,14 +30,22 @@ def _bio_to_bioes(labels):
                 labels_bioes.append('E-' + label[2:])
     return labels_bioes
 
+
+def _apply_processor(inst, processor):
+    for i, p in processor.items():
+        inst[i] = p(inst[i])
+    return inst
+
 class ConllParser(object):
 
     def __init__(self,
                  fields, separator='\t',
-                 skip_comment=False):
+                 skip_comment=False,
+                 processor=None):
         self.fields = fields
         self.separator = separator
         self.skip_comment = skip_comment
+        self.processor = processor
 
     def parse(self, path, *args, **kwargs):
         fields = kwargs.get('fields', self.fields)
@@ -66,9 +74,13 @@ class ConllParser(object):
                         for field_idx, field in enumerate(fields):
                             inst[field_idx].append(segs[field])
                     elif inst[0]:
+                        if self.processor:
+                            inst = _apply_processor(inst, self.processor)
                         yield inst
                         inst = [[] for _ in range(field_num)]
                 if inst[0]:
+                    if self.processor:
+                        inst = _apply_processor(inst, self.processor)
                     yield inst
 
 
@@ -160,7 +172,7 @@ class NameTaggingDataset(Dataset):
                 tokens_ids = tokens_ids[:self.max_seq_len]
                 label_ids = label_ids[:self.max_seq_len]
                 char_ids = char_ids[:self.max_seq_len]
-            data.append([tokens_ids, char_ids, label_ids, tokens, labels])
+            data.append((tokens_ids, char_ids, label_ids, tokens, labels))
         self.data = data
 
     def batch_processor(self, batch):
@@ -177,7 +189,7 @@ class NameTaggingDataset(Dataset):
         max_char_len = self.min_char_len
         for seq in batch:
             for chars in seq[1]:
-                if len(chars) > max_seq_len:
+                if len(chars) > max_char_len:
                     max_char_len = len(chars)
 
         # padding instances
