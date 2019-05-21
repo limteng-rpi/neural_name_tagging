@@ -12,15 +12,15 @@ from argparse import ArgumentParser
 
 from torch.utils.data import DataLoader
 
-from data import ConllParser, NameTaggingDataset
-from model import LstmCNN
-from util import counter_to_vocab, merge_vocabs, build_embedding_vocab, \
-    build_form_mapping, build_signal_embed, load_vocab, \
-    calculate_labeling_scores, save_result_file, calculate_lr
 import constant as C
+from model import LstmCNN
+from data import ConllParser, NameTaggingDataset
+from util import build_embedding_vocab, build_form_mapping, load_vocab, \
+    calculate_labeling_scores, save_result_file, calculate_lr
 
 logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s-%(levelname)s: %(message)s')
+                    # format='%(asctime)s-%(levelname)s: %(message)s',
+                    format='%(message)s')
 logger = logging.getLogger()
 
 # parse commandline arguments
@@ -123,7 +123,8 @@ model = LstmCNN(vocabs=vocabs,
                 feat_dropout=args.feat_dropout)
 optimizer = torch.optim.Adam(filter(lambda x: x.requires_grad,
                                     model.parameters()),
-                             lr=args.lr, weight_decay=.001)
+                             lr=args.lr)
+
 if use_gpu:
     model.cuda()
 
@@ -140,16 +141,14 @@ state = dict(model=model.state_dict(),
 # training
 global_step = 0
 for epoch in range(args.max_epoch):
+    print('-' * 80)
     logger.info('Epoch: {}'.format(epoch))
     epoch_loss = []
-    progress = tqdm.tqdm(desc='Epoch: {}'.format(epoch), mininterval=1,
-                         total=batch_step)
     for batch in DataLoader(train_set,
                             batch_size=args.batch_size,
                             shuffle=True,
                             collate_fn=train_set.batch_processor):
         global_step += 1
-        progress.update()
         optimizer.zero_grad()
         token_ids, char_ids, label_ids, seq_lens, _, _ = batch
         loglik, _ = model.forward(token_ids, char_ids, seq_lens, label_ids)
@@ -173,7 +172,7 @@ for epoch in range(args.max_epoch):
                 results.append((preds, labels, tokens, seq_lens.tolist()))
             fscore, prec, rec = calculate_labeling_scores(results)
             logger.info('Dev - P: {:.2f} R: {:.2f} F: {:.2f}'.format(
-                fscore, prec, rec))
+                prec, rec, fscore))
             if fscore > best_scores['dev']['f']:
                 best_epoch = True
                 best_scores['dev'] = {'f': fscore, 'p': prec, 'r': rec}
@@ -191,19 +190,22 @@ for epoch in range(args.max_epoch):
                 results.append((preds, labels, tokens, seq_lens.tolist()))
             fscore, prec, rec = calculate_labeling_scores(results)
             logger.info('Test - P: {:.2f} R: {:.2f} F: {:.2f}'.format(
-                fscore, prec, rec))
+                prec, rec, fscore))
             if best_epoch:
                 best_scores['test'] = {'f': fscore, 'p': prec, 'r': rec}
                 save_result_file(results, test_result_file)
 
+            # linear learning rate decay
             lr = calculate_lr(args.lr, global_step, total_step,
-                              min_lr=0.01 * args.lr)
+                              min_lr=0.1 * args.lr)
             for p in optimizer.param_groups:
                 p['lr'] = lr
 
+    # progress.close()
     logger.info('Best dev: P: {:.2f}, R: {:.2f}, F: {:.2f}'.format(
         best_scores['dev']['p'], best_scores['dev']['r'],
         best_scores['dev']['f']))
     logger.info('Best test: P: {:.2f}, R: {:.2f}, F: {:.2f}'.format(
         best_scores['test']['p'], best_scores['test']['r'],
         best_scores['test']['f']))
+    logger.info('Output directory: {}'.format(output_dir))
