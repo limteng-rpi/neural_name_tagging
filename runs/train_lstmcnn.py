@@ -46,9 +46,10 @@ parser.add_argument('--lstm_dropout', type=float, default=.5)
 parser.add_argument('--feat_dropout', type=float, default=.5)
 parser.add_argument('--char_type', default='ffn',
                     help='ffn: feed-forward netword; hw: highway network')
-# gpu
+# device
 parser.add_argument('-d', '--device', type=int, default=0,
                     help='GPU device index')
+parser.add_argument('-t', '--thread', type=int, default=1)
 args = parser.parse_args()
 params = vars(args)
 
@@ -73,6 +74,7 @@ torch.cuda.manual_seed(args.seed)
 use_gpu = torch.cuda.is_available()
 if use_gpu:
     torch.cuda.set_device(args.device)
+torch.set_num_threads(args.thread)
 
 # data sets
 conll_parser = ConllParser([3, -1], processor={0: C.TOKEN_PROCESSOR})
@@ -143,6 +145,7 @@ global_step = 0
 for epoch in range(args.max_epoch):
     print('-' * 80)
     logger.info('Epoch: {}'.format(epoch))
+    start_time = time.time()
     epoch_loss = []
     for batch in DataLoader(train_set,
                             batch_size=args.batch_size,
@@ -202,6 +205,9 @@ for epoch in range(args.max_epoch):
                 p['lr'] = lr
 
     # progress.close()
+    logger.info('Epoch: {} Time: {} Loss: {:.4f}'.format(
+        epoch, int(time.time() - start_time),
+        sum(epoch_loss) / len(epoch_loss)))
     logger.info('Best dev: P: {:.2f}, R: {:.2f}, F: {:.2f}'.format(
         best_scores['dev']['p'], best_scores['dev']['r'],
         best_scores['dev']['f']))
