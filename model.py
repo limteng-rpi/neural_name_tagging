@@ -9,7 +9,7 @@ from util import load_embedding_from_file, build_signal_embed
 from module import Linear, LSTM, CRF, Linears, CharCNN, CharCNNFF
 
 
-class LstmCNN(nn.Module):
+class LstmCnn(nn.Module):
 
     def __init__(self,
                  vocabs,
@@ -19,7 +19,7 @@ class LstmCNN(nn.Module):
                  lstm_dropout=0, feat_dropout=0,
                  parameters=None
                  ):
-        super(LstmCNN, self).__init__()
+        super(LstmCnn, self).__init__()
 
         self.vocabs = vocabs
         self.label_size = len(self.vocabs['label'])
@@ -183,7 +183,7 @@ class LstmCnnDfc(nn.Module):
     def _repr_gate(self, word, char, signal=None, idx=0):
         gate_w = self.word_gates[idx](word)
         gate_c = self.char_gates[idx](char)
-        if self.use_gate:
+        if self.use_signal:
             gate_s = self.signal_gates[idx](self.signal_dropout(signal))
             gate = gate_w + gate_c + gate_s
         else:
