@@ -13,7 +13,7 @@ from argparse import ArgumentParser
 from torch.utils.data import DataLoader
 
 import constant as C
-from model import LstmCNN
+from model import LstmCnn
 from data import ConllParser, NameTaggingDataset
 from util import build_embedding_vocab, build_form_mapping, load_vocab, \
     calculate_labeling_scores, save_result_file, calculate_lr
@@ -112,7 +112,7 @@ batch_step = len(train_set) // args.batch_size
 total_step = batch_step * args.max_epoch
 eval_step = batch_step if args.eval_step == -1 else args.eval_step
 char_filters = json.loads(args.char_filters)
-model = LstmCNN(vocabs=vocabs,
+model = LstmCnn(vocabs=vocabs,
                 word_embed_file=args.embed,
                 word_embed_dim=args.word_dim,
                 char_embed_dim=args.char_dim,

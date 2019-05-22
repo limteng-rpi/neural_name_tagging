@@ -1,7 +1,4 @@
 import os
-os.environ['MKL_NUM_THREADS'] = 1
-os.environ['OMP_NUM_THREADS'] = 1
-
 import json
 import time
 import torch
@@ -13,12 +10,10 @@ from argparse import ArgumentParser
 from torch.utils.data import DataLoader
 
 import constant as C
-from model import LstmCNN_DFC
+from model import LstmCnnDfc
 from data import ConllParser, NameTaggingDataset
 from util import build_embedding_vocab, build_form_mapping, load_vocab, \
     calculate_labeling_scores, save_result_file, calculate_lr
-
-torch.set_num_threads(20)
 
 logging.basicConfig(level=logging.INFO,
                     format='%(message)s')
@@ -48,6 +43,7 @@ parser.add_argument('--lstm_dropout', type=float, default=.5)
 parser.add_argument('--feat_dropout', type=float, default=.5)
 parser.add_argument('--signal_dropout', type=float, default=.2)
 parser.add_argument('--ctx_size', type=int, default=3)
+parser.add_argument('--no_signal', action='store_true')
 parser.add_argument('--char_type', default='ffn',
                     help='ffn: feed-forward netword; hw: highway network')
 # gpu
@@ -118,18 +114,20 @@ batch_step = len(train_set) // args.batch_size
 total_step = batch_step * args.max_epoch
 eval_step = batch_step if args.eval_step == -1 else args.eval_step
 char_filters = json.loads(args.char_filters)
-model = LstmCNN_DFC(vocabs=vocabs,
-                    counters=counters,
-                    word_embed_file=args.embed,
-                    word_embed_dim=args.word_dim,
-                    char_embed_dim=args.char_dim,
-                    char_filters=char_filters,
-                    char_feat_dim=args.char_feat_dim,
-                    lstm_hidden_size=args.lstm_size,
-                    lstm_dropout=args.lstm_dropout,
-                    feat_dropout=args.feat_dropout,
-                    signal_dropout=args.signal_dropout,
-                    ctx_size=args.ctx_size)
+model = LstmCnnDfc(vocabs=vocabs,
+                   counters=counters,
+                   word_embed_file=args.embed,
+                   word_embed_dim=args.word_dim,
+                   char_embed_dim=args.char_dim,
+                   char_filters=char_filters,
+                   char_feat_dim=args.char_feat_dim,
+                   lstm_hidden_size=args.lstm_size,
+                   lstm_dropout=args.lstm_dropout,
+                   feat_dropout=args.feat_dropout,
+                   signal_dropout=args.signal_dropout,
+                   ctx_size=args.ctx_size,
+                   use_signal=~args.no_signal
+                   )
 optimizer = torch.optim.Adam(filter(lambda x: x.requires_grad,
                                     model.parameters()),
                              lr=args.lr)
@@ -213,7 +211,8 @@ for epoch in range(args.max_epoch):
 
     # progress.close()
     logger.info('Epoch: {} Time: {} Loss: {:.4f}'.format(
-        epoch, int(time.time() - start_time), sum(epoch_loss) / len(epoch_loss)))
+        epoch, int(time.time() - start_time),
+        sum(epoch_loss) / len(epoch_loss)))
     logger.info('Best dev: P: {:.2f}, R: {:.2f}, F: {:.2f}'.format(
         best_scores['dev']['p'], best_scores['dev']['r'],
         best_scores['dev']['f']))
