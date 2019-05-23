@@ -74,7 +74,11 @@ if use_gpu:
 torch.set_num_threads(args.thread)
 
 # data sets
-conll_parser = ConllParser([3, -1], processor={0: C.TOKEN_PROCESSOR})
+conll_parser = ConllParser(
+    # use the 3rd and last column
+    [3, -1],
+    # process the 3rd column with C.TOKEN_PROCESSOR
+    processor={0: C.TOKEN_PROCESSOR})
 train_set = NameTaggingDataset(os.path.join(args.input, 'train.tsv'),
                                conll_parser, gpu=use_gpu)
 dev_set = NameTaggingDataset(os.path.join(args.input, 'dev.tsv'),
@@ -134,6 +138,7 @@ state = dict(model=model.state_dict(),
              optimizer=optimizer.state_dict(),
              scores=best_scores,
              params=params,
+             model_params=model.params,
              vocabs=vocabs,
              counters=counters)
 

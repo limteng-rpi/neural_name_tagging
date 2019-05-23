@@ -144,6 +144,7 @@ state = dict(model=model.state_dict(),
              optimizer=optimizer.state_dict(),
              scores=best_scores,
              params=params,
+             model_params=model.params,
              vocabs=vocabs,
              counters=counters)
 

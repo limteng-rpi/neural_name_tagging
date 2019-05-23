@@ -24,7 +24,7 @@ class LstmCnn(nn.Module):
         self.vocabs = vocabs
         self.label_size = len(self.vocabs['label'])
         # Input features
-        if parameters and parameters.get('restore', False):
+        if parameters is not None:
             self.word_embed = nn.Embedding(parameters['word_embed_num'],
                                            parameters['word_embed_dim'],
                                            padding_idx=C.PAD_INDEX)
@@ -53,6 +53,13 @@ class LstmCnn(nn.Module):
         self.crf = CRF(vocabs['label'])
         self.feat_dropout = nn.Dropout(p=feat_dropout)
         self.lstm_dropout = nn.Dropout(p=lstm_dropout)
+
+    @property
+    def params(self):
+        return {
+            'word_embed_num': self.word_embed.num_embeddings,
+            'word_embed_dim': self.word_embed.embedding_dim
+        }
 
     def forward_nn(self, token_ids, char_ids, lens):
         batch_size, seq_len = token_ids.size()
@@ -101,9 +108,9 @@ class LstmCnnDfc(nn.Module):
                  lstm_hidden_size,
                  lstm_dropout=0.5, feat_dropout=0.5, signal_dropout=0,
                  ctx_size=5,
-                 use_signal=True
+                 use_signal=True,
+                 parameters=None,
                  ):
-        # TODO: init function for saved model
         assert char_feat_dim >= word_embed_dim
         super(LstmCnnDfc, self).__init__()
 
@@ -112,22 +119,30 @@ class LstmCnnDfc(nn.Module):
         self.use_signal = use_signal
 
         # input features
-        self.word_embed = load_embedding_from_file(word_embed_file,
-                                                   word_embed_dim,
-                                                   vocabs['token'],
-                                                   vocabs['embed'],
-                                                   vocabs['form'],
-                                                   padding_idx=C.PAD_INDEX,
-                                                   trainable=True)
+        if parameters is not None:
+            self.word_embed = nn.Embedding(parameters['word_embed_num'],
+                                           parameters['word_embed_dim'])
+        else:
+            self.word_embed = load_embedding_from_file(word_embed_file,
+                                                       word_embed_dim,
+                                                       vocabs['token'],
+                                                       vocabs['embed'],
+                                                       vocabs['form'],
+                                                       padding_idx=C.PAD_INDEX,
+                                                       trainable=True)
         self.char_embed = CharCNNFF(len(vocabs['char']),
                                     char_embed_dim,
                                     char_filters,
                                     output_size=char_feat_dim)
         if use_signal:
-            self.signal_embed = build_signal_embed(counters['embed'],
-                                                   counters['token'],
-                                                   vocabs['token'],
-                                                   vocabs['form'])
+            if parameters is not None:
+                self.signal_embed = nn.Embedding(parameters['signal_embed_num'],
+                                                 parameters['signal_embed_dim'])
+            else:
+                self.signal_embed = build_signal_embed(counters['embed'],
+                                                       counters['token'],
+                                                       vocabs['token'],
+                                                       vocabs['form'])
         self.word_dim = self.word_embed.embedding_dim
         self.char_dim = self.char_embed.output_size
         self.feat_dim = self.char_dim
@@ -179,6 +194,14 @@ class LstmCnnDfc(nn.Module):
                           self.uni_lstm_size)
                 for _ in range(4)])
 
+    @property
+    def params(self):
+        return {
+            'word_embed_num': self.word_embed.num_embeddings,
+            'word_embed_dim': self.word_embed.embedding_dim,
+            'signal_embed_num': self.signal_embed.num_embeddings,
+            'signal_embed_dim': self.signal_embed.embedding_dim
+        }
 
     def _repr_gate(self, word, char, signal=None, idx=0):
         gate_w = self.word_gates[idx](word)
