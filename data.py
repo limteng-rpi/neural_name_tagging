@@ -109,7 +109,7 @@ class NameTaggingDataset(Dataset):
 
     def load(self):
         """Load data from the file"""
-        logger.info('Loading data from {}'.format(self.path))
+        # logger.info('Loading data from {}'.format(self.path))
         self.data = [inst for inst in self.parser.parse(self.path)]
 
     @property
