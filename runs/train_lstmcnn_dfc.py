@@ -141,8 +141,8 @@ if use_gpu:
 best_scores = {
     'dev': {'p': 0, 'r': 0, 'f': 0}, 'test': {'p': 0, 'r': 0, 'f': 0}}
 state = dict(model=model.state_dict(),
-             optimizer=optimizer.state_dict(),
-             scores=best_scores,
+             # optimizer=optimizer.state_dict(),
+             # scores=best_scores,
              params=params,
              model_params=model.params,
              vocabs=vocabs,
