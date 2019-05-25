@@ -25,6 +25,7 @@ parser = ArgumentParser()
 # i/o
 parser.add_argument('-i', '--input', help='path to the input directory')
 parser.add_argument('-o', '--output', help='path to the output directory')
+parser.add_argument('-p', '--prefix', default='')
 # training parameters
 parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('-b', '--batch_size', type=int, default=10)
@@ -79,12 +80,15 @@ conll_parser = ConllParser(
     [3, -1],
     # process the 3rd column with C.TOKEN_PROCESSOR
     processor={0: C.TOKEN_PROCESSOR})
-train_set = NameTaggingDataset(os.path.join(args.input, 'train.tsv'),
-                               conll_parser, gpu=use_gpu)
-dev_set = NameTaggingDataset(os.path.join(args.input, 'dev.tsv'),
-                             conll_parser, gpu=use_gpu)
-test_set = NameTaggingDataset(os.path.join(args.input, 'test.tsv'),
-                              conll_parser, gpu=use_gpu)
+train_set = NameTaggingDataset(os.path.join(
+    args.input, '{}train.tsv'.format(args.prefix)),
+    conll_parser, gpu=use_gpu)
+dev_set = NameTaggingDataset(os.path.join(
+    args.input, '{}dev.tsv'.format(args.prefix)),
+    conll_parser, gpu=use_gpu)
+test_set = NameTaggingDataset(os.path.join(
+    args.input, '{}test.tsv'.format(args.prefix)),
+    conll_parser, gpu=use_gpu)
 
 # embedding vocab
 if args.embed_vocab:
@@ -93,9 +97,12 @@ else:
     embed_vocab = build_embedding_vocab(args.embed)
 
 # vocabulary
-token_vocab = load_vocab(os.path.join(args.input, 'token.vocab.tsv'))
-char_vocab = load_vocab(os.path.join(args.input, 'char.vocab.tsv'))
-label_vocab = load_vocab(os.path.join(args.input, 'label.vocab.tsv'))
+token_vocab = load_vocab(os.path.join(
+    args.input, '{}token.vocab.tsv'.format(args.prefix)))
+char_vocab = load_vocab(os.path.join(
+    args.input, '{}char.vocab.tsv'.format(args.prefix)))
+label_vocab = load_vocab(os.path.join(
+    args.input, '{}label.vocab.tsv'.format(args.prefix)))
 label_itos = {i: l for l, i in label_vocab.items()}
 train_token_counter = train_set.token_counter
 vocabs = dict(token=token_vocab,
