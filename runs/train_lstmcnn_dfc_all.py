@@ -24,6 +24,7 @@ parser = ArgumentParser()
 # i/o
 parser.add_argument('-i', '--input', help='path to the input directory')
 parser.add_argument('-o', '--output', help='path to the output directory')
+parser.add_argument('-p', '--prefix', default='')
 parser.add_argument('--datasets', default='bc,bn,mz,nw,tc,wb')
 # training parameters
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
@@ -96,12 +97,14 @@ for dataset in datasets:
         # process the 3rd column with C.TOKEN_PROCESSOR
         processor={0: C.TOKEN_PROCESSOR})
     train_set = NameTaggingDataset(
-        os.path.join(args.input, dataset, 'train.tsv'),
+        os.path.join(args.input, dataset, '{}train.tsv'.format(args.prefix)),
         conll_parser, gpu=use_gpu)
-    dev_set = NameTaggingDataset(os.path.join(args.input, dataset, 'dev.tsv'),
-                                 conll_parser, gpu=use_gpu)
-    test_set = NameTaggingDataset(os.path.join(args.input, dataset, 'test.tsv'),
-                                  conll_parser, gpu=use_gpu)
+    dev_set = NameTaggingDataset(
+        os.path.join(args.input, dataset, '{}dev.tsv'.format(args.prefix)),
+        conll_parser, gpu=use_gpu)
+    test_set = NameTaggingDataset(
+        os.path.join(args.input, dataset, '{}test.tsv'.format(args.prefix)),
+        conll_parser, gpu=use_gpu)
 
     # embedding vocab
     if args.embed_vocab:
@@ -110,11 +113,12 @@ for dataset in datasets:
         embed_vocab = build_embedding_vocab(args.embed)
 
     # vocabulary
-    token_vocab = load_vocab(
-        os.path.join(args.input, dataset, 'token.vocab.tsv'))
-    char_vocab = load_vocab(os.path.join(args.input, dataset, 'char.vocab.tsv'))
-    label_vocab = load_vocab(
-        os.path.join(args.input, dataset, 'label.vocab.tsv'))
+    token_vocab = load_vocab(os.path.join(
+        args.input, dataset, '{}token.vocab.tsv'.format(args.prefix)))
+    char_vocab = load_vocab(os.path.join(
+        args.input, dataset, '{}char.vocab.tsv'.format(args.prefix)))
+    label_vocab = load_vocab(os.path.join(
+        args.input, dataset, '{}label.vocab.tsv'.format(args.prefix)))
     label_itos = {i: l for l, i in label_vocab.items()}
     train_token_counter = train_set.token_counter
     embed_counter = load_vocab(args.embed_count)
@@ -267,7 +271,8 @@ for train in datasets:
 
     scores = []
     for test in datasets:
-        test_file = os.path.join(args.input, test, 'test.tsv')
+        test_file = os.path.join(
+            args.input, test, '{}test.tsv'.format(args.prefix))
         conll_parser = ConllParser([3, -1], processor={0: C.TOKEN_PROCESSOR})
         test_set = NameTaggingDataset(test_file, conll_parser, gpu=use_gpu)
         test_set.numberize(state['vocabs'])
