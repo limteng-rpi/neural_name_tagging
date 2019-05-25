@@ -95,3 +95,36 @@ def build_all_vocabs(files, output_dir, prefix=''):
               'w', encoding='utf-8') as w:
         for t, c in label_vocab:
             w.write('{}\t{}\n'.format(t, c))
+
+
+def select_rare_subset(input_file, output_file, embed_count_file,
+                       threshold=10, token_col=3):
+    rare_token = set()
+    with open(embed_count_file, 'r', encoding='utf-8') as r:
+        for line in r:
+            token, count = line.rstrip('\n').split('\t')
+            if int(count) <= threshold:
+                rare_token.add(token)
+
+    inst_num = 0
+    with open(input_file, 'r', encoding='utf-8') as r, \
+        open(output_file, 'w', encoding='utf-8') as w:
+        instance = []
+        has_rare = False
+        for line in r:
+            line = line.rstrip('\n')
+            if line:
+                segments = line.rstrip('\n').split('\t')
+                token = segments[token_col]
+                if token in rare_token:
+                    has_rare = True
+                instance.append(line)
+            else:
+                if instance and has_rare:
+                    inst_num += 1
+                    for i in instance:
+                        w.write('{}\n'.format(i))
+                    w.write('\n')
+                instance = []
+                has_rare = False
+    print('wrote {} instances'.format(inst_num))
