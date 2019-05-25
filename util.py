@@ -197,42 +197,6 @@ def load_vocab(path):
             vocab[token] = int(idx)
     return vocab
 
-def build_all_vocabs(files, output_dir):
-    from data import ConllParser, NameTaggingDataset
-    parser = ConllParser([3, -1], processor={0: C.TOKEN_PROCESSOR})
-    token_counter, char_counter, label_counter = Counter(), Counter(), Counter()
-    for file in files:
-        dataset = NameTaggingDataset(file, parser)
-        tc, cc, lc = dataset.counters
-        token_counter.update(tc)
-        char_counter.update(cc)
-        label_counter.update(lc)
-    token_vocab = counter_to_vocab(token_counter,
-                                   offset=len(C.TOKEN_PADS),
-                                   pads=C.TOKEN_PADS)
-    char_vocab = counter_to_vocab(char_counter,
-                                    offset=len(C.CHAR_PADS),
-                                    pads=C.CHAR_PADS)
-    label_vocab = counter_to_vocab(label_counter)
-
-    token_vocab = [(t, c) for t, c in token_vocab.items()]
-    char_vocab = [(t, c) for t, c in char_vocab.items()]
-    label_vocab = [(t, c) for t, c in label_vocab.items()]
-
-    with open(os.path.join(output_dir, 'token.vocab.tsv'), 'w',
-              encoding='utf-8') as w:
-        for t, c in token_vocab:
-            w.write('{}\t{}\n'.format(t, c))
-    with open(os.path.join(output_dir, 'char.vocab.tsv'), 'w',
-              encoding='utf-8') as w:
-        for t, c in char_vocab:
-            w.write('{}\t{}\n'.format(t, c))
-    with open(os.path.join(output_dir, 'label.vocab.tsv'), 'w',
-              encoding='utf-8') as w:
-        for t, c in label_vocab:
-            w.write('{}\t{}\n'.format(t, c))
-
-
 def calculate_lr(lr, current_step, total_step, min_lr=0):
     return min_lr + (lr - min_lr) * (1 - current_step / total_step)
 
