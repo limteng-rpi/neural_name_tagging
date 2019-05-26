@@ -10,12 +10,13 @@ from argparse import ArgumentParser
 from torch.utils.data import DataLoader
 
 import constant as C
-from model import LstmCnnDfc
+from model import LstmCnnFeatGate
 from data import ConllParser, NameTaggingDataset
 from util import build_embedding_vocab, build_form_mapping, load_vocab, \
     calculate_labeling_scores, save_result_file, calculate_lr
 
 logging.basicConfig(level=logging.INFO,
+                    # format='%(asctime)s-%(levelname)s: %(message)s',
                     format='%(message)s')
 logger = logging.getLogger()
 
@@ -34,18 +35,14 @@ parser.add_argument('-s', '--seed', type=int, default=1111)
 parser.add_argument('--eval_step', type=int, default=-1)
 # model parameters
 parser.add_argument('-e', '--embed')
-parser.add_argument('--embed_count')
 parser.add_argument('--embed_vocab', default=None)
 parser.add_argument('--char_dim', type=int, default=50)
 parser.add_argument('--word_dim', type=int, default=100)
 parser.add_argument('--char_filters', default='[[2,50],[3,50],[4,50]]')
-parser.add_argument('--char_feat_dim', type=int, default=150)
+parser.add_argument('--char_feat_dim', type=int, default=100)
 parser.add_argument('--lstm_size', type=int, default=100)
 parser.add_argument('--lstm_dropout', type=float, default=.5)
 parser.add_argument('--feat_dropout', type=float, default=.5)
-parser.add_argument('--signal_dropout', type=float, default=.2)
-parser.add_argument('--ctx_size', type=int, default=3)
-parser.add_argument('--no_signal', action='store_true')
 parser.add_argument('--char_type', default='ffn',
                     help='ffn: feed-forward netword; hw: highway network')
 # device
@@ -83,12 +80,9 @@ report_file.flush()
 
 # Train
 for dataset in datasets:
-    best_model_file = os.path.join(output_dir,
-                                   '{}.model.best.mdl'.format(dataset))
-    dev_result_file = os.path.join(output_dir,
-                                   '{}.result.dev.bio'.format(dataset))
-    test_result_file = os.path.join(output_dir,
-                                    '{}.result.test.bio'.format(dataset))
+    best_model_file = os.path.join(output_dir, '{}.model.best.mdl'.format(dataset))
+    dev_result_file = os.path.join(output_dir, '{}.result.dev.bio'.format(dataset))
+    test_result_file = os.path.join(output_dir, '{}.result.test.bio'.format(dataset))
     logger.info('Output directory: {}'.format(output_dir))
 
     # data sets
@@ -122,14 +116,12 @@ for dataset in datasets:
         args.input, dataset, '{}label.vocab.tsv'.format(args.prefix)))
     label_itos = {i: l for l, i in label_vocab.items()}
     train_token_counter = train_set.token_counter
-    embed_counter = load_vocab(args.embed_count)
     vocabs = dict(token=token_vocab,
                   char=char_vocab,
                   label=label_vocab,
                   embed=embed_vocab,
                   form=build_form_mapping(token_vocab))
-    counters = dict(token=train_token_counter,
-                    embed=embed_counter)
+    counters = dict(token=train_token_counter)
 
     # numberize data set
     train_set.numberize(vocabs)
@@ -140,20 +132,15 @@ for dataset in datasets:
     batch_step = len(train_set) // args.batch_size
     total_step = batch_step * args.max_epoch
     eval_step = batch_step if args.eval_step == -1 else args.eval_step
-    model = LstmCnnDfc(vocabs=vocabs,
-                       counters=counters,
-                       word_embed_file=args.embed,
-                       word_embed_dim=args.word_dim,
-                       char_embed_dim=args.char_dim,
-                       char_filters=char_filters,
-                       char_feat_dim=args.char_feat_dim,
-                       lstm_hidden_size=args.lstm_size,
-                       lstm_dropout=args.lstm_dropout,
-                       feat_dropout=args.feat_dropout,
-                       signal_dropout=args.signal_dropout,
-                       ctx_size=args.ctx_size,
-                       use_signal=~args.no_signal
-                       )
+    model = LstmCnnFeatGate(vocabs=vocabs,
+                    word_embed_file=args.embed,
+                    word_embed_dim=args.word_dim,
+                    char_embed_dim=args.char_dim,
+                    char_filters=char_filters,
+                    char_feat_dim=args.char_feat_dim,
+                    lstm_hidden_size=args.lstm_size,
+                    lstm_dropout=args.lstm_dropout,
+                    feat_dropout=args.feat_dropout)
     optimizer = torch.optim.Adam(filter(lambda x: x.requires_grad,
                                         model.parameters()),
                                  lr=args.lr)
@@ -164,8 +151,8 @@ for dataset in datasets:
     best_scores = {
         'dev': {'p': 0, 'r': 0, 'f': 0}, 'test': {'p': 0, 'r': 0, 'f': 0}}
     state = dict(model=model.state_dict(),
-                 # optimizer=optimizer.state_dict(),
-                 # scores=best_scores,
+                 optimizer=optimizer.state_dict(),
+                 scores=best_scores,
                  params=params,
                  model_params=model.params,
                  vocabs=vocabs,
@@ -254,17 +241,14 @@ for train in datasets:
     # load the model
     state = torch.load(os.path.join(output_dir,
                                     '{}.model.best.mdl'.format(train)))
-    model = LstmCnnDfc(vocabs=state['vocabs'],
-                       counters=state['counters'],
-                       word_embed_file=None,
-                       word_embed_dim=args.word_dim,
-                       char_embed_dim=args.char_dim,
-                       char_filters=char_filters,
-                       char_feat_dim=args.char_feat_dim,
-                       lstm_hidden_size=args.lstm_size,
-                       ctx_size=args.ctx_size,
-                       use_signal=~args.no_signal,
-                       parameters=state['model_params']
+    model = LstmCnnFeatGate(vocabs=state['vocabs'],
+                    word_embed_file=None,
+                    word_embed_dim=args.word_dim,
+                    char_embed_dim=args.char_dim,
+                    char_filters=char_filters,
+                    char_feat_dim=args.char_feat_dim,
+                    lstm_hidden_size=args.lstm_size,
+                    parameters=state['model_params']
                     )
     model.load_state_dict(state['model'])
     if use_gpu:

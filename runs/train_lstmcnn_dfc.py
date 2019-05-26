@@ -37,7 +37,7 @@ parser.add_argument('--embed_count')
 parser.add_argument('--embed_vocab', default=None)
 parser.add_argument('--char_dim', type=int, default=50)
 parser.add_argument('--word_dim', type=int, default=100)
-parser.add_argument('--char_filters', default='[[2,25],[3,25],[4,25]]')
+parser.add_argument('--char_filters', default='[[2,50],[3,50],[4,50]]')
 parser.add_argument('--char_feat_dim', type=int, default=50)
 parser.add_argument('--lstm_size', type=int, default=100)
 parser.add_argument('--lstm_dropout', type=float, default=.5)
@@ -51,6 +51,7 @@ parser.add_argument('--char_type', default='ffn',
 parser.add_argument('-d', '--device', type=int, default=0,
                     help='GPU device index')
 parser.add_argument('-t', '--thread', type=int, default=1)
+parser.add_argument('-n', '--note', default='')
 args = parser.parse_args()
 params = vars(args)
 
