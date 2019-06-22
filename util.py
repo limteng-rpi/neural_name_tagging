@@ -44,50 +44,43 @@ def merge_vocabs(vocabs, offset=0, pads=None):
     return vocab
 
 
-def build_fallback_mapping(vocab: dict,
-                       lower_case: bool = True,
-                       zero_number: bool = True):
-    fallback_mapping = {k: k for k, _v in vocab.items()}
+def build_embedding_vocab(path, skip_first=True):
+    """Building a vocabulary from an embedding file.
+    :param path: Path to the embedding file.
+    """
+    vocab = {}
+    with open(path, 'r', encoding='utf-8', errors='ignore') as r:
+        if skip_first:
+            r.readline()
+        for line in r:
+            try:
+                token = line.split(' ')[0].strip()
+                if token:
+                    vocab[token] = len(vocab)
+            except UnicodeDecodeError:
+                continue
+    return vocab
+
+
+def build_form_mapping(vocab: dict,
+                          lower_case:bool = True,
+                          zero_number:bool = True):
+    form_mapping = {k: k for k, _v in vocab.items()}
     if not (lower_case or zero_number):
-        return fallback_mapping
+        return form_mapping
 
     digit_pattern = re.compile('\d')
     for k in vocab.keys():
         k_lower = k.lower()
         if lower_case:
-            if k_lower not in fallback_mapping:
-                fallback_mapping[k_lower] = k
+            if k_lower not in form_mapping:
+                form_mapping[k_lower] = k
         if zero_number:
             k_zero = re.sub(digit_pattern, '0', k_lower if lower_case else k)
-            if k_zero not in fallback_mapping:
-                fallback_mapping[k_zero] = k
+            if k_zero not in form_mapping:
+                form_mapping[k_zero] = k
 
-    return fallback_mapping
-
-
-def build_form_mapping(token_vocab, embed_vocab):
-    embed_fallback_mapping = build_fallback_mapping(embed_vocab)
-
-    form_mapping = defaultdict(list)
-    digit_pattern = re.compile('\d')
-    new_token_vocab = {}
-    for t in token_vocab.keys():
-        unk = False
-        if t in embed_fallback_mapping:
-            form_mapping[embed_fallback_mapping[t]].append(t)
-        else:
-            t_lower = t.lower()
-            if t_lower in embed_fallback_mapping:
-                form_mapping[embed_fallback_mapping[t_lower]].append(t)
-            else:
-                t_zero = digit_pattern.sub('0', t_lower)
-                if t_zero in embed_fallback_mapping:
-                    form_mapping[embed_fallback_mapping[t_zero]].append(t)
-                else:
-                    unk = True
-        if not unk:
-            new_token_vocab[t] = len(new_token_vocab)
-    return form_mapping, new_token_vocab
+    return form_mapping
 
 
 def build_signal_embed(embed_counter, train_counter, token_vocab, form_mapping,
@@ -137,7 +130,7 @@ def build_signal_embed(embed_counter, train_counter, token_vocab, form_mapping,
 def load_embedding_from_file(path,
                              embedding_dim,
                              vocab,
-                             embed_vocab,
+                             embed_vocab=None,
                              form_mapping=None,
                              padding_idx=None,
                              max_norm=None,
@@ -156,8 +149,10 @@ def load_embedding_from_file(path,
     :param sparse: Set this option to True may accelerate the training. Note
     that sparse gradient is not supported by all optimizers.
     """
+    if embed_vocab is None:
+        embed_vocab = build_embedding_vocab(path, skip_first=skip_first)
     if form_mapping is None:
-        form_mapping = build_form_mapping(vocab, embed_vocab)
+        form_mapping = build_form_mapping(embed_vocab)
 
     logger.info('Loading embedding from file: {}'.format(path))
     weights = [[.0] * embedding_dim for _ in range(len(vocab))]
@@ -168,11 +163,21 @@ def load_embedding_from_file(path,
             try:
                 segs = line.rstrip().split(' ')
                 token = segs[0]
-                if token in form_mapping:
-                    for target in form_mapping[token]:
-                        weights[vocab[target]] = [float(i) for i in segs[1:]]
+                if token in vocab:
+                    weights[vocab[token]] = [float(i) for i in segs[1:]]
             except UnicodeDecodeError:
                 pass
+
+    # Fallback to lower case/all-zero number forms
+    digit_pattern = re.compile('\d')
+    for token, idx in vocab.items():
+        if token not in embed_vocab:
+            token_lower = token.lower()
+            token_zero = re.sub(digit_pattern, '0', token_lower)
+            if token_lower in form_mapping:
+                weights[idx] = weights[vocab[form_mapping[token_lower]]]
+            elif token_zero in form_mapping:
+                weights[idx] = weights[vocab[form_mapping[token_zero]]]
 
     embed_mat = nn.Embedding(
         len(weights),

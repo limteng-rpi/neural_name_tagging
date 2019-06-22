@@ -89,8 +89,8 @@ def build_all_vocabs(files, output_dir, prefix=''):
         token_counter.update(tc)
         char_counter.update(cc)
         label_counter.update(lc)
-    token_vocab = counter_to_vocab(token_counter)
-    char_vocab = counter_to_vocab(char_counter)
+    token_vocab = counter_to_vocab(token_counter, offset=len(C.TOKEN_PADS), pads=C.TOKEN_PADS)
+    char_vocab = counter_to_vocab(char_counter, offset=len(C.CHAR_PADS), pads=C.CHAR_PADS)
     label_vocab = counter_to_vocab(label_counter)
 
     token_vocab = [(t, c) for t, c in token_vocab.items()]
