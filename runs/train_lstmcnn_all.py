@@ -13,10 +13,10 @@ import constant as C
 from model import LstmCnn
 from data import ConllParser, NameTaggingDataset
 from util import build_embedding_vocab, build_form_mapping, load_vocab, \
-    calculate_labeling_scores, save_result_file, calculate_lr
+    calculate_labeling_scores, save_result_file, calculate_lr, \
+    build_fallback_mapping, counter_to_vocab
 
 logging.basicConfig(level=logging.INFO,
-                    # format='%(asctime)s-%(levelname)s: %(message)s',
                     format='%(message)s')
 logger = logging.getLogger()
 
@@ -43,8 +43,6 @@ parser.add_argument('--char_feat_dim', type=int, default=50)
 parser.add_argument('--lstm_size', type=int, default=100)
 parser.add_argument('--lstm_dropout', type=float, default=.5)
 parser.add_argument('--feat_dropout', type=float, default=.5)
-parser.add_argument('--char_type', default='ffn',
-                    help='ffn: feed-forward netword; hw: highway network')
 # device
 parser.add_argument('-d', '--device', type=int, default=0,
                     help='GPU device index')
@@ -93,13 +91,13 @@ for dataset in datasets:
         processor={0: C.TOKEN_PROCESSOR})
     train_set = NameTaggingDataset(
         os.path.join(args.input, dataset, '{}train.tsv'.format(args.prefix)),
-        conll_parser, gpu=use_gpu)
+        conll_parser, gpu=use_gpu, to_bioes=True)
     dev_set = NameTaggingDataset(
         os.path.join(args.input, dataset, '{}dev.tsv'.format(args.prefix)),
-        conll_parser, gpu=use_gpu)
+        conll_parser, gpu=use_gpu, to_bioes=True)
     test_set = NameTaggingDataset(
         os.path.join(args.input, dataset, '{}test.tsv'.format(args.prefix)),
-        conll_parser, gpu=use_gpu)
+        conll_parser, gpu=use_gpu, to_bioes=True)
 
     # embedding vocab
     if args.embed_vocab:
@@ -115,13 +113,18 @@ for dataset in datasets:
     label_vocab = load_vocab(os.path.join(
         args.input, dataset, '{}label.vocab.tsv'.format(args.prefix)))
     label_itos = {i: l for l, i in label_vocab.items()}
-    train_token_counter = train_set.token_counter
+    form_mapping, token_vocab = build_form_mapping(token_vocab, embed_vocab)
+    token_fallback_mapping = build_fallback_mapping(token_vocab)
+    char_vocab = counter_to_vocab(char_vocab, offset=len(C.CHAR_PADS),
+                                  pads=C.CHAR_PADS)
+    token_vocab = counter_to_vocab(token_vocab, offset=len(C.TOKEN_PADS),
+                                   pads=C.TOKEN_PADS)
     vocabs = dict(token=token_vocab,
                   char=char_vocab,
                   label=label_vocab,
                   embed=embed_vocab,
-                  form=build_form_mapping(token_vocab))
-    counters = dict(token=train_token_counter)
+                  form=form_mapping,
+                  fallback=token_fallback_mapping)
 
     # numberize data set
     train_set.numberize(vocabs)
@@ -155,8 +158,7 @@ for dataset in datasets:
                  scores=best_scores,
                  params=params,
                  model_params=model.params,
-                 vocabs=vocabs,
-                 counters=counters)
+                 vocabs=vocabs)
 
     # training
     global_step = 0
@@ -198,7 +200,7 @@ for dataset in datasets:
                     best_epoch = True
                     best_scores['dev'] = {'f': fscore, 'p': prec, 'r': rec}
                     torch.save(state, best_model_file)
-                    save_result_file(results, dev_result_file)
+                    save_result_file(results, dev_result_file, to_bio=True)
 
                 # test set
                 results = []
@@ -214,7 +216,7 @@ for dataset in datasets:
                     prec, rec, fscore))
                 if best_epoch:
                     best_scores['test'] = {'f': fscore, 'p': prec, 'r': rec}
-                    save_result_file(results, test_result_file)
+                    save_result_file(results, test_result_file, to_bio=True)
 
                 # linear learning rate decay
                 lr = calculate_lr(args.lr, global_step, total_step,
