@@ -4,20 +4,20 @@ Code for our ACL2019 paper _Reliability-aware Dynamic Feature Composition for Na
 
 # Input Data Set Directory Structure
 - <input_dir>
-  - embed.vocab.tsv    (embedding vocab file, 1st column: token, 2nd column: index)
-  - embed.count.tsv    (embedding token frequency file, 1st column: token, 2nd column: frequency)
-  - bc
-    - train.tsv        (training set)
-    - dev.tsv          (development set)
-    - test.tsv         (test set)
-    - token.vocab.tsv  (token vocab file, 1st column: token, 2nd column: index)
-    - char.vocab.tsv   (character vocab file: 1st column: character, 2nd column: index)
-    - label.vocab.tsv  (label vocab file: 1st column: label, 2nd column: index)
-  - bn
-  - mz
-  - nw  
-  - tc
-  - wb
+  - `embed.vocab.tsv`    (embedding vocab file, 1st column: token, 2nd column: index)
+  - `embed.count.tsv`    (embedding token frequency file, 1st column: token, 2nd column: frequency)
+  - `bc`
+    - `train.tsv`        (training set)
+    - `dev.tsv`          (development set)
+    - `test.tsv`         (test set)
+    - `token.vocab.tsv`  (token vocab file, 1st column: token, 2nd column: index)
+    - `char.vocab.tsv`   (character vocab file: 1st column: character, 2nd column: index)
+    - `label.vocab.tsv`  (label vocab file: 1st column: label, 2nd column: index)
+  - `bn`
+  - `mz`
+  - `nw` 
+  - `tc`
+  - `wb`
 
 Note:
 - Other subsets have `train.tsv`, `dev.tsv`, `test.tsv`, `token.vocab.tsv`, `char.vocab.tsv`, and `label.vocab.tsv` in their directories.
