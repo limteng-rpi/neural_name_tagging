@@ -38,6 +38,8 @@ python train_lstmcnn_all.py -d 4 -i <input_dir> -o <output_dir> -e <embedding_fi
   -d <gpu_device>
 ```
 
+This script train a model for each subset (which can be specified with the `--datasets` argument) and report within-subset (within-genre) and cross-subset (cross-genre) performance.
+
 # Train LSTM-CNN with Dynamic Feature Composition
 
 TBA
