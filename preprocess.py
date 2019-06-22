@@ -61,6 +61,24 @@ def build_embed_token_count(embed_train_file,
             w.write('{}\t{}\n'.format(t, c))
 
 
+def build_embed_vocab(path, skip_first=True):
+    """Building a vocabulary from an embedding file.
+    :param path: Path to the embedding file.
+    """
+    vocab = {}
+    with open(path, 'r', encoding='utf-8', errors='ignore') as r:
+        if skip_first:
+            r.readline()
+        for line in r:
+            try:
+                token = line.split(' ')[0].strip()
+                if token:
+                    vocab[token] = len(vocab)
+            except UnicodeDecodeError:
+                continue
+    return vocab
+
+
 def build_all_vocabs(files, output_dir, prefix=''):
     from data import ConllParser, NameTaggingDataset
     parser = ConllParser([3, -1], processor={0: C.TOKEN_PROCESSOR})
@@ -71,12 +89,8 @@ def build_all_vocabs(files, output_dir, prefix=''):
         token_counter.update(tc)
         char_counter.update(cc)
         label_counter.update(lc)
-    token_vocab = counter_to_vocab(token_counter,
-                                   offset=len(C.TOKEN_PADS),
-                                   pads=C.TOKEN_PADS)
-    char_vocab = counter_to_vocab(char_counter,
-                                    offset=len(C.CHAR_PADS),
-                                    pads=C.CHAR_PADS)
+    token_vocab = counter_to_vocab(token_counter)
+    char_vocab = counter_to_vocab(char_counter)
     label_vocab = counter_to_vocab(label_counter)
 
     token_vocab = [(t, c) for t, c in token_vocab.items()]
@@ -95,36 +109,3 @@ def build_all_vocabs(files, output_dir, prefix=''):
               'w', encoding='utf-8') as w:
         for t, c in label_vocab:
             w.write('{}\t{}\n'.format(t, c))
-
-
-def select_rare_subset(input_file, output_file, embed_count_file,
-                       threshold=10, token_col=3):
-    rare_token = set()
-    with open(embed_count_file, 'r', encoding='utf-8') as r:
-        for line in r:
-            token, count = line.rstrip('\n').split('\t')
-            if int(count) <= threshold:
-                rare_token.add(token)
-
-    inst_num = 0
-    with open(input_file, 'r', encoding='utf-8') as r, \
-        open(output_file, 'w', encoding='utf-8') as w:
-        instance = []
-        has_rare = False
-        for line in r:
-            line = line.rstrip('\n')
-            if line:
-                segments = line.rstrip('\n').split('\t')
-                token = segments[token_col]
-                if token in rare_token:
-                    has_rare = True
-                instance.append(line)
-            else:
-                if instance and has_rare:
-                    inst_num += 1
-                    for i in instance:
-                        w.write('{}\n'.format(i))
-                    w.write('\n')
-                instance = []
-                has_rare = False
-    print('wrote {} instances'.format(inst_num))

@@ -44,24 +44,6 @@ def merge_vocabs(vocabs, offset=0, pads=None):
     return vocab
 
 
-def build_embedding_vocab(path, skip_first=True):
-    """Building a vocabulary from an embedding file.
-    :param path: Path to the embedding file.
-    """
-    vocab = {}
-    with open(path, 'r', encoding='utf-8', errors='ignore') as r:
-        if skip_first:
-            r.readline()
-        for line in r:
-            try:
-                token = line.split(' ')[0].strip()
-                if token:
-                    vocab[token] = len(vocab)
-            except UnicodeDecodeError:
-                continue
-    return vocab
-
-
 def build_fallback_mapping(vocab: dict,
                        lower_case: bool = True,
                        zero_number: bool = True):
@@ -155,7 +137,7 @@ def build_signal_embed(embed_counter, train_counter, token_vocab, form_mapping,
 def load_embedding_from_file(path,
                              embedding_dim,
                              vocab,
-                             embed_vocab=None,
+                             embed_vocab,
                              form_mapping=None,
                              padding_idx=None,
                              max_norm=None,
@@ -174,8 +156,6 @@ def load_embedding_from_file(path,
     :param sparse: Set this option to True may accelerate the training. Note
     that sparse gradient is not supported by all optimizers.
     """
-    if embed_vocab is None:
-        embed_vocab = build_embedding_vocab(path, skip_first=skip_first)
     if form_mapping is None:
         form_mapping = build_form_mapping(vocab, embed_vocab)
 
