@@ -33,7 +33,9 @@ The following functions in `proprocess.py` can be used to create vocab and frequ
 # Train LSTM-CNN
 
 ```
-python train_lstmcnn_all.py -d 4 -i <input_dir> -o <output_dir> -e <embedding_file> --embed_vocab <embedding_vocab_file> --char_dim 25 --seed <random_seed> -d <gpu_device>
+python train_lstmcnn_all.py -d 4 -i <input_dir> -o <output_dir> -e <embedding_file>
+  --embed_vocab <embedding_vocab_file> --char_dim 50 --seed <random_seed>
+  -d <gpu_device>
 ```
 
 # Train LSTM-CNN with Dynamic Feature Composition
