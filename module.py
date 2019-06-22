@@ -65,11 +65,15 @@ class Highway(nn.Module):
         self.size = size
         self.activation = getattr(torch, activation)
         self.linear = Linear(size, size)
+        self.non_linear = Linear(size, size)
         self.gate = Linear(size, size)
 
     def forward(self, x):
         gate = self.gate(x).sigmoid()
-        return gate * self.activation(self.linear(x)) + (1 - gate) * x
+        linear = self.linear(x)
+        non_linear = self.activation(self.non_linear(x))
+        return gate * non_linear + (1 - gate) * linear
+        # return gate * self.activation(self.linear(x)) + (1 - gate) * x
 
 
 
@@ -149,8 +153,39 @@ class CharCNNFF(nn.Module):
         conv_outputs_max = [F.max_pool1d(i, i.size(2)).squeeze(2)
                             for i in conv_outputs]
         outputs = torch.cat(conv_outputs_max, 1)
-        outputs = F.tanh(self.linear(outputs))
+        # outputs = F.tanh(self.linear(outputs))
+        outputs = F.leaky_relu(self.linear(outputs))
         return outputs
+
+class CharCNNHW(nn.Module):
+    def __init__(self, embedding_num, embedding_dim, filters,
+                 padding_idx=0):
+        super(CharCNNHW, self).__init__()
+
+        self.embedding_num = embedding_num
+        self.embedding_dim = embedding_dim
+        self.conv_output_size = sum([x[1] for x in filters])
+        self.output_size = self.conv_output_size
+        self.filters = filters
+
+        self.char_embed = nn.Embedding(embedding_num, embedding_dim,
+                                       padding_idx=padding_idx)
+        self.convs = nn.ModuleList([nn.Conv2d(1, x[1], (x[0], embedding_dim))
+                                    for x in filters])
+        self.highway = Highway(self.conv_output_size, activation='leaky_relu')
+
+    def forward(self, inputs):
+        inputs_embed = self.char_embed.forward(inputs)
+        inputs_embed = inputs_embed.unsqueeze(1)
+
+        conv_outputs = [F.tanh(conv.forward(inputs_embed)).squeeze(3)
+                        for conv in self.convs]
+        conv_outputs_max = [F.max_pool1d(i, i.size(2)).squeeze(2)
+                            for i in conv_outputs]
+        outputs = torch.cat(conv_outputs_max, 1)
+        outputs = self.highway(outputs)
+        return outputs
+
 
 
 class CRF(nn.Module):

@@ -11,7 +11,7 @@ from collections import Counter
 logger = logging.getLogger()
 
 
-def _bio_to_bioes(labels):
+def bio_to_bioes(labels):
     label_len = len(labels)
     labels_bioes = []
     for idx, label in enumerate(labels):
@@ -87,7 +87,7 @@ class ConllParser(object):
 
 class NameTaggingDataset(Dataset):
 
-    def __init__(self, path, parser, max_seq_len=-1, gpu=True, min_char_len=4):
+    def __init__(self, path, parser, max_seq_len=-1, gpu=True, min_char_len=4, to_bioes=False):
         """
         :param path: Path to the data file.
         :param parser: A parser that read and process the data file.
@@ -99,6 +99,7 @@ class NameTaggingDataset(Dataset):
         self.data = []
         self.gpu = gpu
         self.min_char_len = min_char_len
+        self.to_bioes = to_bioes
         self.load()
 
     def __getitem__(self, idx):
@@ -150,6 +151,8 @@ class NameTaggingDataset(Dataset):
         data = []
         for inst in self.data:
             tokens, labels = inst[0], inst[1]
+            if self.to_bioes:
+                labels = bio_to_bioes(labels)
             # numberize tokens
             tokens_ids = []
             for token in tokens:
