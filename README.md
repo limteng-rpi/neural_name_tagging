@@ -1,11 +1,5 @@
 # Dynamic Feature Composition for Name Tagging
 
-**Still updating this repo**
-
-**Still updating this repo**
-
-**Still updating this repo**
-
 Code for our ACL2019 paper _Reliability-aware Dynamic Feature Composition for Name Tagging_.
 
 # Requirement
