@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 import constant as C
 from model import LstmCnn
 from data import ConllParser, NameTaggingDataset
-from util import build_embedding_vocab, build_form_mapping, load_vocab, \
+from util import build_form_mapping, load_vocab, \
     calculate_labeling_scores, save_result_file, calculate_lr, \
     build_fallback_mapping, counter_to_vocab
 
@@ -35,7 +35,7 @@ parser.add_argument('-s', '--seed', type=int, default=1111)
 parser.add_argument('--eval_step', type=int, default=-1)
 # model parameters
 parser.add_argument('-e', '--embed')
-parser.add_argument('--embed_vocab', default=None)
+parser.add_argument('--embed_vocab')
 parser.add_argument('--char_dim', type=int, default=50)
 parser.add_argument('--word_dim', type=int, default=100)
 parser.add_argument('--char_filters', default='[[2,50],[3,50],[4,50]]')
@@ -100,10 +100,7 @@ for dataset in datasets:
         conll_parser, gpu=use_gpu, to_bioes=True)
 
     # embedding vocab
-    if args.embed_vocab:
-        embed_vocab = load_vocab(args.embed_vocab)
-    else:
-        embed_vocab = build_embedding_vocab(args.embed)
+    embed_vocab = load_vocab(args.embed_vocab)
 
     # vocabulary
     token_vocab = load_vocab(os.path.join(
