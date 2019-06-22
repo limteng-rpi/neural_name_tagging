@@ -6,7 +6,7 @@ import logging
 import conlleval
 import torch.nn as nn
 import numpy as np
-from collections import Counter
+from collections import Counter, defaultdict
 import constant as C
 
 logger = logging.getLogger()
@@ -21,7 +21,7 @@ def counter_to_vocab(counter, offset=0, pads=None, min_count=0):
     """
     vocab = {}
     for token, freq in counter.items():
-        if freq > min_count:
+        if freq >= min_count:
             vocab[token] = len(vocab) + offset
     if pads:
         for k, v in pads:
@@ -62,25 +62,50 @@ def build_embedding_vocab(path, skip_first=True):
     return vocab
 
 
-def build_form_mapping(vocab: dict,
-                          lower_case:bool = True,
-                          zero_number:bool = True):
-    form_mapping = {k: k for k, _v in vocab.items()}
+def build_fallback_mapping(vocab: dict,
+                       lower_case: bool = True,
+                       zero_number: bool = True):
+    fallback_mapping = {k: k for k, _v in vocab.items()}
     if not (lower_case or zero_number):
-        return form_mapping
+        return fallback_mapping
 
     digit_pattern = re.compile('\d')
     for k in vocab.keys():
         k_lower = k.lower()
         if lower_case:
-            if k_lower not in form_mapping:
-                form_mapping[k_lower] = k
+            if k_lower not in fallback_mapping:
+                fallback_mapping[k_lower] = k
         if zero_number:
             k_zero = re.sub(digit_pattern, '0', k_lower if lower_case else k)
-            if k_zero not in form_mapping:
-                form_mapping[k_zero] = k
+            if k_zero not in fallback_mapping:
+                fallback_mapping[k_zero] = k
 
-    return form_mapping
+    return fallback_mapping
+
+
+def build_form_mapping(token_vocab, embed_vocab):
+    embed_fallback_mapping = build_fallback_mapping(embed_vocab)
+
+    form_mapping = defaultdict(list)
+    digit_pattern = re.compile('\d')
+    new_token_vocab = {}
+    for t in token_vocab.keys():
+        unk = False
+        if t in embed_fallback_mapping:
+            form_mapping[embed_fallback_mapping[t]].append(t)
+        else:
+            t_lower = t.lower()
+            if t_lower in embed_fallback_mapping:
+                form_mapping[embed_fallback_mapping[t_lower]].append(t)
+            else:
+                t_zero = digit_pattern.sub('0', t_lower)
+                if t_zero in embed_fallback_mapping:
+                    form_mapping[embed_fallback_mapping[t_zero]].append(t)
+                else:
+                    unk = True
+        if not unk:
+            new_token_vocab[t] = len(new_token_vocab)
+    return form_mapping, new_token_vocab
 
 
 def build_signal_embed(embed_counter, train_counter, token_vocab, form_mapping,
@@ -97,14 +122,18 @@ def build_signal_embed(embed_counter, train_counter, token_vocab, form_mapping,
     feat_size = 10
     # process counts
     embed_counter_scaled = {t: embed_scale_func(c)
-                          for t, c in embed_counter.items()}
+                            for t, c in embed_counter.items()}
     train_counter_scaled = {t: train_scale_func(c)
-                          for t, c in train_counter.items()}
+                            for t, c in train_counter.items()}
 
     # build signal embeddings
     signal_embed = [[0] * feat_size for _ in range(len(token_vocab))]
+    form_mapping_reversed = {}
+    for k, vs in form_mapping.items():
+        for v in vs:
+            form_mapping_reversed[v] = k
     for token, token_idx in token_vocab.items():
-        mapped_token = form_mapping.get(token, token)
+        mapped_token = form_mapping_reversed.get(token, token)
         signal_embed[token_idx] = [
             # numeric signals
             embed_counter_scaled.get(mapped_token, 0),
@@ -148,7 +177,7 @@ def load_embedding_from_file(path,
     if embed_vocab is None:
         embed_vocab = build_embedding_vocab(path, skip_first=skip_first)
     if form_mapping is None:
-        form_mapping = build_form_mapping(embed_vocab)
+        form_mapping = build_form_mapping(vocab, embed_vocab)
 
     logger.info('Loading embedding from file: {}'.format(path))
     weights = [[.0] * embedding_dim for _ in range(len(vocab))]
@@ -159,21 +188,11 @@ def load_embedding_from_file(path,
             try:
                 segs = line.rstrip().split(' ')
                 token = segs[0]
-                if token in vocab:
-                    weights[vocab[token]] = [float(i) for i in segs[1:]]
+                if token in form_mapping:
+                    for target in form_mapping[token]:
+                        weights[vocab[target]] = [float(i) for i in segs[1:]]
             except UnicodeDecodeError:
                 pass
-
-    # Fallback to lower case/all-zero number forms
-    digit_pattern = re.compile('\d')
-    for token, idx in vocab.items():
-        if token not in embed_vocab:
-            token_lower = token.lower()
-            token_zero = re.sub(digit_pattern, '0', token_lower)
-            if token_lower in form_mapping:
-                weights[idx] = weights[vocab[form_mapping[token_lower]]]
-            elif token_zero in form_mapping:
-                weights[idx] = weights[vocab[form_mapping[token_zero]]]
 
     embed_mat = nn.Embedding(
         len(weights),
@@ -197,8 +216,10 @@ def load_vocab(path):
             vocab[token] = int(idx)
     return vocab
 
+
 def calculate_lr(lr, current_step, total_step, min_lr=0):
     return min_lr + (lr - min_lr) * (1 - current_step / total_step)
+
 
 def calculate_labeling_scores(results, report=True):
     outputs = []
@@ -215,11 +236,21 @@ def calculate_labeling_scores(results, report=True):
     return (overall.fscore * 100.0, overall.prec * 100.0, overall.rec * 100.0)
 
 
-def save_result_file(results, output_file):
+def save_result_file(results, output_file, to_bio=False):
+    def bioes_2_bio_tag(tag):
+        if tag.startswith('S-'):
+            tag = 'B-' + tag[2:]
+        elif tag.startswith('E-'):
+            tag = 'I-' + tag[2:]
+        return tag
+
     with open(output_file, 'w', encoding='utf-8') as w:
         for p_b, g_b, t_b, l_b in results:
             for p_s, g_s, t_s, l_s in zip(p_b, g_b, t_b, l_b):
                 p_s = p_s[:l_s]
                 for p, g, t in zip(p_s, g_s, t_s):
+                    if to_bio:
+                        p = bioes_2_bio_tag(p)
+                        g = bioes_2_bio_tag(g)
                     w.write('{}\t{}\t{}\n'.format(t, g, p))
                 w.write('\n')
