@@ -30,6 +30,16 @@ The following functions in `proprocess.py` can be used to create vocab and frequ
 - `build_embed_vocab` takes a pre-trained embedding file as input and return the embedding vocab.
 - `build_embed_token_count` takes a pre-trained embedding file as input and generate an embedding token frequency file.
 
+# Train LSTM-CNN
+
+```
+python train_lstmcnn_all.py -d 4 -i <input_dir> -o <output_dir> -e <embedding_file> --embed_vocab <embedding_vocab_file> --char_dim 25 --seed <random_seed> -d <gpu_device>
+```
+
+# Train LSTM-CNN with Dynamic Feature Composition
+
+TBA
+
 # Requirement
 + Python 3.5+
 + Pytorch 1.0
