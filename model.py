@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.init as I
 import torch.nn.utils.rnn as R
-import torch.nn.functional as F
 
 import constant as C
 from util import load_embedding_from_file, build_signal_embed

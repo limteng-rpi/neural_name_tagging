@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 import constant as C
 from model import LstmCnnDfc
 from data import ConllParser, NameTaggingDataset
-from util import build_embedding_vocab, build_form_mapping, load_vocab, \
+from util import build_form_mapping, load_vocab, \
     calculate_labeling_scores, save_result_file, calculate_lr
 
 logging.basicConfig(level=logging.INFO,
