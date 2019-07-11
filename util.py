@@ -1,13 +1,9 @@
 import re
-import os
-import json
 import torch
 import logging
 import conlleval
 import torch.nn as nn
 import numpy as np
-from collections import Counter, defaultdict
-import constant as C
 
 logger = logging.getLogger()
 
