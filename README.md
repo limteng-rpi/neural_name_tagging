@@ -35,7 +35,6 @@ The following functions in `proprocess.py` can be used to create vocab and frequ
 ```
 python train_lstmcnn_all.py -d 0 -i <input_dir> -o <output_dir> -e <embedding_file>
   --embed_vocab <embedding_vocab_file> --char_dim 50 --seed <random_seed>
-  -d <gpu_device>
 ```
 
 This script train a model for each subset (which can be specified with the `--datasets` argument) and report within-subset (within-genre) and cross-subset (cross-genre) performance.
@@ -45,7 +44,6 @@ This script train a model for each subset (which can be specified with the `--da
 ```
 python train_lstmcnn_dfc_all.py -d 0 -i <input_dir> -o <output_dir> -e <embedding_file>
   --embed_vocab <embedding_vocab_file> --embed_count <embedding_freq_file> --char_dim 50 --seed <random_seed>
-  -d <gpu_device>
 ```
 
 # Requirement
