@@ -98,11 +98,8 @@ for dataset in datasets:
         os.path.join(args.input, dataset, '{}test.tsv'.format(args.prefix)),
         conll_parser, gpu=use_gpu)
 
-    # embedding vocab
+    # vocabulary
     embed_vocab = load_vocab(args.embed_vocab)
-
-    # vocabulary
-    # vocabulary
     token_vocab = load_vocab(os.path.join(
         args.input, dataset, '{}token.vocab.tsv'.format(args.prefix)))
     char_vocab = load_vocab(os.path.join(
@@ -145,8 +142,6 @@ for dataset in datasets:
     best_scores = {
         'dev': {'p': 0, 'r': 0, 'f': 0}, 'test': {'p': 0, 'r': 0, 'f': 0}}
     state = dict(model=model.state_dict(),
-                 optimizer=optimizer.state_dict(),
-                 scores=best_scores,
                  params=params,
                  model_params=model.params,
                  vocabs=vocabs)
@@ -177,7 +172,9 @@ for dataset in datasets:
                 # dev set
                 best_epoch = False
                 results = []
-                for batch_dev in DataLoader(dev_set, batch_size=50, shuffle=False,
+                for batch_dev in DataLoader(dev_set,
+                                            batch_size=50,
+                                            shuffle=False,
                                             collate_fn=dev_set.batch_processor):
                     (token_ids, char_ids, label_ids, seq_lens,
                      tokens, labels) = batch_dev
@@ -195,7 +192,9 @@ for dataset in datasets:
 
                 # test set
                 results = []
-                for batch_test in DataLoader(test_set, batch_size=50, shuffle=False,
+                for batch_test in DataLoader(test_set,
+                                             batch_size=50,
+                                             shuffle=False,
                                              collate_fn=test_set.batch_processor):
                     (token_ids, char_ids, label_ids, seq_lens,
                      tokens, labels) = batch_test

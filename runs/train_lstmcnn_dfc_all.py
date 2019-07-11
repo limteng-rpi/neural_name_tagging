@@ -35,7 +35,7 @@ parser.add_argument('--eval_step', type=int, default=-1)
 # model parameters
 parser.add_argument('-e', '--embed')
 parser.add_argument('--embed_count')
-parser.add_argument('--embed_vocab', default=None)
+parser.add_argument('--embed_vocab')
 parser.add_argument('--char_dim', type=int, default=50)
 parser.add_argument('--word_dim', type=int, default=100)
 parser.add_argument('--char_filters', default='[[2,50],[3,50],[4,50]]')
@@ -46,8 +46,6 @@ parser.add_argument('--feat_dropout', type=float, default=.5)
 parser.add_argument('--signal_dropout', type=float, default=.2)
 parser.add_argument('--ctx_size', type=int, default=3)
 parser.add_argument('--no_signal', action='store_true')
-parser.add_argument('--char_type', default='ffn',
-                    help='ffn: feed-forward netword; hw: highway network')
 # device
 parser.add_argument('-d', '--device', type=int, default=0,
                     help='GPU device index')
@@ -83,12 +81,9 @@ report_file.flush()
 
 # Train
 for dataset in datasets:
-    best_model_file = os.path.join(output_dir,
-                                   '{}.model.best.mdl'.format(dataset))
-    dev_result_file = os.path.join(output_dir,
-                                   '{}.result.dev.bio'.format(dataset))
-    test_result_file = os.path.join(output_dir,
-                                    '{}.result.test.bio'.format(dataset))
+    best_model_file = os.path.join(output_dir, '{}.model.best.mdl'.format(dataset))
+    dev_result_file = os.path.join(output_dir, '{}.result.dev.bio'.format(dataset))
+    test_result_file = os.path.join(output_dir, '{}.result.test.bio'.format(dataset))
     logger.info('Output directory: {}'.format(output_dir))
 
     # data sets
@@ -107,13 +102,8 @@ for dataset in datasets:
         os.path.join(args.input, dataset, '{}test.tsv'.format(args.prefix)),
         conll_parser, gpu=use_gpu)
 
-    # embedding vocab
-    if args.embed_vocab:
-        embed_vocab = load_vocab(args.embed_vocab)
-    else:
-        embed_vocab = build_embedding_vocab(args.embed)
-
     # vocabulary
+    embed_vocab = load_vocab(args.embed_vocab)
     token_vocab = load_vocab(os.path.join(
         args.input, dataset, '{}token.vocab.tsv'.format(args.prefix)))
     char_vocab = load_vocab(os.path.join(
@@ -164,8 +154,6 @@ for dataset in datasets:
     best_scores = {
         'dev': {'p': 0, 'r': 0, 'f': 0}, 'test': {'p': 0, 'r': 0, 'f': 0}}
     state = dict(model=model.state_dict(),
-                 # optimizer=optimizer.state_dict(),
-                 # scores=best_scores,
                  params=params,
                  model_params=model.params,
                  vocabs=vocabs,
@@ -197,7 +185,8 @@ for dataset in datasets:
                 # dev set
                 best_epoch = False
                 results = []
-                for batch_dev in DataLoader(dev_set, batch_size=50,
+                for batch_dev in DataLoader(dev_set,
+                                            batch_size=50,
                                             shuffle=False,
                                             collate_fn=dev_set.batch_processor):
                     (token_ids, char_ids, label_ids, seq_lens,
@@ -216,7 +205,8 @@ for dataset in datasets:
 
                 # test set
                 results = []
-                for batch_test in DataLoader(test_set, batch_size=50,
+                for batch_test in DataLoader(test_set,
+                                             batch_size=50,
                                              shuffle=False,
                                              collate_fn=test_set.batch_processor):
                     (token_ids, char_ids, label_ids, seq_lens,
