@@ -50,3 +50,15 @@ TBA
 
 # Resources
 + We use the 100d case-sensitive word embedding in [Pre-trained Word Embeddings](http://www.limteng.com/research/2018/05/14/pretrained-word-embeddings.html)
+
+# Reference
+Lin, Y., Liu, L., Ji, H., Yu, D., Han, J. (2019) Reliability-aware Dynamic Feature Composition for Name Tagging. Proceedings of The 57th Annual Meeting of the Association for Computational Linguistics.
+
+```
+@article{lin2019reliability,
+  title={Reliability-aware Dynamic Feature Composition for Name Tagging},
+  author={Lin, Ying and Liu, Liyuan and Ji, Heng and Yu, Dong and Han, Jiawei},
+  booktitle={Proceedings of The 57th Annual Meeting of the Association for Computational Linguistics (ACL2019)},
+  year={2019}
+}
+```
