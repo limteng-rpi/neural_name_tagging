@@ -2,6 +2,10 @@
 
 Code for our ACL2019 paper _Reliability-aware Dynamic Feature Composition for Name Tagging_.
 
+TODO:
+- add sample data
+- add eval scripts
+
 # Input Data Set Directory Structure
 - <input_dir>
   - `embed.vocab.tsv`    (embedding vocab file, 1st column: token, 2nd column: index)
@@ -33,16 +37,18 @@ The following functions in `proprocess.py` can be used to create vocab and frequ
 # Train LSTM-CNN
 
 ```
-python train_lstmcnn_all.py -d 4 -i <input_dir> -o <output_dir> -e <embedding_file>
+python train_lstmcnn_all.py -d 0 -i <input_dir> -o <output_dir> -e <embedding_file>
   --embed_vocab <embedding_vocab_file> --char_dim 50 --seed <random_seed>
-  -d <gpu_device>
 ```
 
 This script train a model for each subset (which can be specified with the `--datasets` argument) and report within-subset (within-genre) and cross-subset (cross-genre) performance.
 
 # Train LSTM-CNN with Dynamic Feature Composition
 
-TBA
+```
+python train_lstmcnn_dfc_all.py -d 0 -i <input_dir> -o <output_dir> -e <embedding_file>
+  --embed_vocab <embedding_vocab_file> --embed_count <embedding_freq_file> --char_dim 50 --seed <random_seed>
+```
 
 # Requirement
 + Python 3.5+
