@@ -2,10 +2,6 @@
 
 Code for our ACL2019 paper _Reliability-aware Dynamic Feature Composition for Name Tagging_.
 
-TODO:
-- add sample data
-- add eval scripts
-
 # Input Data Set Directory Structure
 - <input_dir>
   - `embed.vocab.tsv`    (embedding vocab file, 1st column: token, 2nd column: index)
